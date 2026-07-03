@@ -163,3 +163,33 @@ main{
         width: 100%;
     }
 }
+
+.suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-basis: 100%;
+    border: 2px solid var(--ink);
+}
+
+.suggestions:empty{
+    display: none;
+    border: none;
+}
+
+.suggestions li {
+    padding: 0.5rem 0.8rem;
+    border-top: 1px solid #ccc;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.suggestions li:first-child{
+    border-top: none;
+}
+
+.suggestions li:hover{
+    background: var(--route-yellow);
+}
