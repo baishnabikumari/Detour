@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Public+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap');
+
+:root{
+    --asphalt: #1c1a17;
+    --paper: #f3ede0;
+    --ink: #221d15;
+    --detour: #e8631c;
+    --route-yellow: #f4b740;
+}
+
+*{
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--asphalt);
+    color: var(--paper);
+    font-family: 'Public Sans', sans-serif;
+}
+
+header{
+    padding: 2.5rem 2rem 1.5rem;
+    border-bottom: 3px dashed var(--route-yellow);
+}
+
+header h1{
+    margin: 0;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+header p{
+    margin: 0.3rem 0 0;
+    color: #a89f8d;
+    font-size: 1rem;
+}
+
+#route-form{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 1.5rem 2rem;
+}
+
+#route-form input{
+    flex: 1;
+    min-width: 180px;
+    padding: 0.8rem 1rem;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Public Sans', sans-serif;
+    font-size: 1rem;
+}
+
+#find-btn{
+    padding: 0.8rem 1.8rem;
+    border: 3px solid var(--asphalt);
+    border-radius: 4px;
+    background: var(--detour);
+    color: var(--asphalt);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+#find-btn:hover{
+    background: #ff7429;
+}
+
+#find-btn:active{
+    transform: translateY(2px);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible{
+    outline: 3px solid var(--route-yellow);
+    outline-offset: 2px;
+}
+
+main{
+    display: flex;
+    height: 65vh;
+    min-height: 420px;
+    background: var(--ink);
+}
+
+/* leaflet need a explicit height on its container or the map renders as a blank strip  */
+#map{
+    flex: 1;
+    height: 100%;
+}
+
+#results{
+    width: 320px;
+    flex-shrink: 0;
+    padding: 1.3rem;
+    overflow-y: auto;
+    background: var(--paper);
+    color: var(--ink);
+}
+
+#filter{
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+#filter select{
+    flex: 1;
+    padding: 0.5rem;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Public Sans', sans-serif;
+    font-size: 0.85rem;
+}
+
+#spot-list{
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+#spot-list:empty::before{
+    content: 'no detours yet - plug in a route above';
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #7a7261;
+}
+
+@media(prefers-reduced-motion: reduce){
+    #find-btn{
+        transition: none;
+    }
+}
+
+@media(max-width: 720px){
+    header h1{
+        font-size: 2.8rem;
+    }
+
+    main {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    #map{
+        height: 300px;
+    }
+    #results{
+        width: 100%;
+    }
+}
