@@ -47,15 +47,20 @@ header p{
 }
 
 #route-form input{
-    flex: 1;
-    min-width: 180px;
-    padding: 0.8rem 1rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
     border: 2px solid var(--ink);
     border-radius: 4px;
     background: var(--paper);
     color: var(--ink);
     font-family: 'Public Sans', sans-serif;
     font-size: 1rem;
+}
+
+.field {
+    position: relative;
+    flex: 1;
+    min-width: 180px;
 }
 
 #find-btn{
@@ -165,11 +170,16 @@ main{
 }
 
 .suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 2000;
     list-style: none;
     margin: 0;
     padding: 0;
-    flex-basis: 100%;
     border: 2px solid var(--ink);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
 .suggestions:empty{
