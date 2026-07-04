@@ -203,3 +203,48 @@ main{
 .suggestions li:hover{
     background: var(--route-yellow);
 }
+
+.spot{
+    padding: 0.8rem;
+    border-left: 4px solid var(--link);
+    background: #ebe4d5;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+.spot:hover{
+    transform: translateX(2px);
+}
+
+.spot-name{
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.3rem;
+}
+
+.spot-meta{
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Jetbrains Mono', monospace;
+    font-size: 0.7rem;
+    color: #7a7261;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.spot-cat{
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.spot-food{
+    border-left-color: #e8631c;
+}
+.spot-history{
+    border-left-color: #8b5a2b;
+}
+.spot-nature{
+    border-left-color: #4a7c3f;
+}
+.spot-weird{
+    border-left-color: #6b4c8f;
+}

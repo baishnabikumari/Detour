@@ -150,6 +150,27 @@ function categorize(tags){
     return 'weird';
 }
 
+function renderSpots(pois){
+    const list = document.getElementById('spot-list');
+    list.innerHTML = '';
+    if(!pois.length){
+        list.textContent = 'no worthwhile detour found for this route';
+        return;
+    }
+    pois.slice(0, 20).forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'spot spot-${p.cat}';
+        card.innerHTML = `
+            <div class="spot-name">${p.name}</div>
+            <div class="spot-meta">
+                <span class="spot-cat">${p.cat}</span>
+                <span class="spot-detour">${p.detour.toFixed(1)} km off route</span>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
 document.getElementById('find-btn').addEventListener('click', async () => {
     if(!selectedPlace.start || !selectedPlace.end){
         alert('Pick a start and destination from the dropdown first.');
@@ -178,6 +199,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
             p.score = p.interest / (p.detour + 0.5);
         });
         pois.sort((a,b) => b.score - a.score);
+        renderSpots(pois)
     } catch (err){
         console.error('routing failed', err);
         alert('Could not find a route b/w those points.');
