@@ -67,14 +67,19 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     }
     if (routeLayer) map.removeLayer(routeLayer);
 
-    const { lat: startLat, lon: startLon } = selectedPlace.start;
-    const { lat: endLat, lon: endLon } = selectedPlace.end;
-    const url = `/api/route?start=${startLon},${startLat}&end=${endLon},${endLat}`;
+    const s = selectedPlace.start;
+    const e = selectedPlace.end;
+    const url = `https://router.project-osrm.org/route/v1/driving/${s.lon},${s.lat};${e.lon},${e.lat}?overview=full&geometries=geojson`;
 
     try{
         const res = await fetch(url);
         const data = await res.json();
-        routeLayer = L.geoJSON(data, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
+        if(data.code !== 'Ok'){
+            alert('No route found b/w those points.');
+            return;
+        }
+        const geojson = { type: 'Feature', geometry: data.routes[0].geometry };
+        routeLayer = L.geoJSON(geojson, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
         map.fitBounds(routeLayer.getBounds());
     } catch (err){
         console.error('routing failed', err);
