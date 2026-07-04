@@ -147,6 +147,8 @@ function categorize(tags){
     if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'bar') return 'food';
     if (tags.historic) return 'history';
     if (tags.natural || tags.leisure) return 'nature';
+    if(tags.tourism === 'museum') return 'history';
+    if(tags.tourism === 'viewpoint') return 'nature';
     return 'weird';
 }
 

@@ -206,7 +206,7 @@ main{
 
 .spot{
     padding: 0.8rem;
-    border-left: 4px solid var(--link);
+    border-left: 4px solid var(--ink);
     background: #ebe4d5;
     cursor: pointer;
     transition: transform 0.1s ease;
