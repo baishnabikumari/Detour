@@ -94,6 +94,7 @@ async function fetchPOIs(routeCoords) {
             lon: el.lon,
             cat: categorize(el.tags),
             tags: el.tags,
+            interest: interestScore(el.tags),
         })).filter(p => p.name !== 'Unnamed spot');
         return filterNearRoute(all, routeCoords, 10);
     } catch (err){
@@ -119,6 +120,27 @@ function filterNearRoute(pois, routeCoords, maxKm){
         }
         return false;
     });
+}
+
+function detourKm(poi, routeCoords){
+    const step = Math.max(1, Math.floor(routeCoords.length / 50));
+    let closest = Infinity;
+    for(let i = 0; i < routeCoords.length; i += step){
+        const d = distKm(poi.lat, poi.lon, routeCoords[i][1], routeCoords[i][0]);
+        if(d < closest) closest = d;
+    }
+    return closest
+}
+
+function interestScore(tags){
+    let s = 1;
+    if(tags.wikipedia || tags.wikidata) s += 3;
+    if(tags.description) s += 1;
+    if(tags.website) s += 1;
+    if(tags.tourism === 'attraction' || tags.tourism === 'museum') s += 2;
+    if(tags.historic === 'castle' || tags.historic === 'fort' || tags.historic === 'monument') s += 2;
+    if(tags.natural === 'waterfall') s += 2;
+    return s;
 }
 
 function categorize(tags){
@@ -150,6 +172,12 @@ document.getElementById('find-btn').addEventListener('click', async () => {
         routeLayer = L.geoJSON(geojson, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
         map.fitBounds(routeLayer.getBounds());
         const pois = await fetchPOIs(data.routes[0].geometry.coordinates);
+        const routeCoords = data.routes[0].geometry.coordinates;
+        pois.forEach(p => {
+            p.detour = detourKm(p, routeCoords);
+            p.score = p.interest / (p.detour + 0.5);
+        });
+        pois.sort((a,b) => b.score - a.score);
     } catch (err){
         console.error('routing failed', err);
         alert('Could not find a route b/w those points.');
