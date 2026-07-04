@@ -7,6 +7,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.p
 }).addTo(map);
 
 const selectedPlace = {};
+let routeLayer = null;
 
 function debounce(fn, delay){
     let timer;
@@ -58,3 +59,25 @@ function setupAutocomplete(inputId){
 
 setupAutocomplete('start');
 setupAutocomplete('end');
+
+document.getElementById('find-btn').addEventListener('click', async () => {
+    if(!selectedPlace.start || !selectedPlace.end){
+        alert('Pick a start and destination from the dropdown first.');
+        return;
+    }
+    if (routeLayer) map.removeLayer(routeLayer);
+
+    const { lat: startLat, lon: startLon } = selectedPlace.start;
+    const { lat: endLat, lon: endLon } = selectedPlace.end;
+    const url = `/api/route?start=${startLon},${startLat}&end=${endLon},${endLat}`;
+
+    try{
+        const res = await fetch(url);
+        const data = await res.json();
+        routeLayer = L.geoJSON(data, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
+        map.fitBounds(routeLayer.getBounds());
+    } catch (err){
+        console.error('routing failed', err);
+        alert('Could not find a route b/w those points.');
+    }
+});
