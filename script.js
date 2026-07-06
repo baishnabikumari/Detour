@@ -8,6 +8,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.p
 
 const selectedPlace = {};
 let routeLayer = null;
+let poiMarker = [];
 
 function debounce(fn, delay){
     let timer;
@@ -81,11 +82,15 @@ async function fetchPOIs(routeCoords) {
         out body;
     `;
     try{
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
         const res = await fetch('https://overpass-api.de/api/interpreter', {
             method: 'POST',
             body: `data=${encodeURIComponent(query)}`,
             headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         const data = await res.json();
         const all = data.elements.map(el => ({
             id: el.id,
@@ -152,6 +157,49 @@ function categorize(tags){
     return 'weird';
 }
 
+function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
+
+    const total = buckets * perBucket;
+    pois.forEach(p => {
+        let nearestIdx = 0;
+        let nearestDist = Infinity;
+        const step = Math.max(1, Math.floor(routeCoords.length / 100));
+        for(let i = 0; i < routeCoords.length; i += step){
+            const d = distKm(p.lat, p.lon, routeCoords[i][1], routeCoords[i][0]);
+            if(d < nearestDist){
+                nearestDist = d;
+                nearestIdx = i;
+            }
+        }
+        p.routePos = nearestIdx / routeCoords.length;
+    });
+
+    const used = new Set();
+    const picked = [];
+    for(let b = 0; b < buckets; b++){
+        const lo = b / buckets;
+        const hi = (b + 1) / buckets;
+        const inBucket = pois
+            .filter(p => p.routePos >= lo && p.routePos < hi)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, perBucket);
+        inBucket.forEach(p => {
+            picked.push(p);
+            used.add(p.id);
+        });
+    }
+
+    if(picked.length < total){
+        const remaining = pois
+            .filter(p => !used.has(p.id))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, total - picked,length);
+        picked.push(...remaining);
+    }
+    picked.sort((a, b) => b.score - a.score);
+    return picked;
+}
+
 function renderSpots(pois){
     const list = document.getElementById('spot-list');
     list.innerHTML = '';
@@ -170,6 +218,32 @@ function renderSpots(pois){
             </div>
         `;
         list.appendChild(card);
+    });
+}
+
+const catColors = {
+    food: '#e8631c',
+    history: '#8b5a2b',
+    nature: '#4a7c3f',
+    weird: '#6b4c8f',
+};
+
+function renderMarkers(pois){
+    poiMarker.forEach(m => map.removeLayer(m));
+    poiMarker = [];
+    pois.slice(0, 20).forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lon], {
+            radius: 6,
+            color: '#1c1a17',
+            weight: 2,
+            fillColor: catColors[p.cat] || '#999',
+            fillOpacity: 0.9,
+        }).addTo(map);
+        marker.bindPopup(`
+            <strong>${p.name}</strong><br>
+            <span style="text-transform:uppercase;font-size:0.75rem;color:#7a7261">${p.cat} · ${p.detour.toFixed(1)} km off route</span>
+        `);
+        poiMarker.push(marker);
     });
 }
 
@@ -200,8 +274,10 @@ document.getElementById('find-btn').addEventListener('click', async () => {
             p.detour = detourKm(p, routeCoords);
             p.score = p.interest / (p.detour + 0.5);
         });
-        pois.sort((a,b) => b.score - a.score);
-        renderSpots(pois)
+        //pois.sort((a,b) => b.score - a.score);
+        const spread = spreadAlongRoute(pois, routeCoords, 5, 4);
+        renderSpots(spread)
+        renderMarkers(spread)
     } catch (err){
         console.error('routing failed', err);
         alert('Could not find a route b/w those points.');
