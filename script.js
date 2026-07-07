@@ -8,6 +8,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.p
 
 const selectedPlace = {};
 let routeLayer = null;
+let currentPois = [];
 let poiMarker = [];
 
 function debounce(fn, delay){
@@ -247,6 +248,23 @@ function renderMarkers(pois){
     });
 }
 
+function applyFilters(){
+    const cat = document.getElementById('category-filter').value;
+    const sort = document.getElementById('sort-by').value;
+
+    let filtered = currentPois;
+    if(cat !== 'all'){
+        filtered = filtered.filter(p => p.cat === cat);
+    }
+    if(sort === 'time'){
+        filtered = [...filtered].sort((a, b) => a.detour - b.detour);
+    } else {
+        filtered = [...filtered].sort((a, b) => b.score - a.score);
+    }
+    renderSpots(filtered);
+    renderMarkers(filtered)
+}
+
 document.getElementById('find-btn').addEventListener('click', async () => {
     if(!selectedPlace.start || !selectedPlace.end){
         alert('Pick a start and destination from the dropdown first.');
@@ -278,8 +296,12 @@ document.getElementById('find-btn').addEventListener('click', async () => {
         const spread = spreadAlongRoute(pois, routeCoords, 5, 4);
         renderSpots(spread)
         renderMarkers(spread)
+        currentPois = spread;
     } catch (err){
         console.error('routing failed', err);
         alert('Could not find a route b/w those points.');
     }
 });
+
+document.getElementById('category-filter').addEventListener('change', applyFilters);
+document.getElementById('sort-by').addEventListener('change', applyFilters);
