@@ -10,6 +10,7 @@ const selectedPlace = {};
 let routeLayer = null;
 let currentPois = [];
 let poiMarker = [];
+let endpointMarkers = [];
 
 function debounce(fn, delay){
     let timer;
@@ -219,6 +220,13 @@ function renderSpots(pois){
             </div>
         `;
         list.appendChild(card);
+        card.addEventListener('click', () => {
+            const marker = poiMarker.find(m => m._poiId === p.id);
+            if(marker){
+                map.setView([p.lat, p.lon], 13);
+                marker.openPopup();
+            }
+        });
     });
 }
 
@@ -244,6 +252,7 @@ function renderMarkers(pois){
             <strong>${p.name}</strong><br>
             <span style="text-transform:uppercase;font-size:0.75rem;color:#7a7261">${p.cat} · ${p.detour.toFixed(1)} km off route</span>
         `);
+        marker._poiId = p.id;
         poiMarker.push(marker);
     });
 }
@@ -272,6 +281,11 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     }
     if (routeLayer) map.removeLayer(routeLayer);
 
+    poiMarker.forEach(m => map.removeLayer(m));
+    poiMarker = [];
+    document.getElementById('spot-list').innerHTML = '';
+    endpointMarkers.forEach(m => map.routeLayer(m));
+    endpointMarkers = [];
     const s = selectedPlace.start;
     const e = selectedPlace.end;
     const url = `https://router.project-osrm.org/route/v1/driving/${s.lon},${s.lat};${e.lon},${e.lat}?overview=full&geometries=geojson`;
@@ -286,6 +300,11 @@ document.getElementById('find-btn').addEventListener('click', async () => {
         const geojson = { type: 'Feature', geometry: data.routes[0].geometry };
         routeLayer = L.geoJSON(geojson, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
         map.fitBounds(routeLayer.getBounds());
+        const startPin = L.marker([s.lat, s.lon]).addTo(map).bindPopup('Start');
+        const endPin = L.marker([e.lat, e.lon]).addTo(map).bindPopup('Destination');
+        endpointMarkers.push(startPin, endPin);
+        const list = document.getElementById('spot-list');
+        list.innerHTML = '<div class="loading"><div class="spinner"></div>scanning for the detours...</div>';
         const pois = await fetchPOIs(data.routes[0].geometry.coordinates);
         const routeCoords = data.routes[0].geometry.coordinates;
         pois.forEach(p => {
