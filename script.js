@@ -64,6 +64,7 @@ setupAutocomplete('start');
 setupAutocomplete('end');
 
 async function fetchPOIs(routeCoords) {
+    const chunkSize = Math.max(1, Math.floor)
     let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
     for (const c of routeCoords){
         if (c[1] < minLat) minLat = c[1];
@@ -195,7 +196,7 @@ function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
         const remaining = pois
             .filter(p => !used.has(p.id))
             .sort((a, b) => b.score - a.score)
-            .slice(0, total - picked,length);
+            .slice(0, total - picked.length);
         picked.push(...remaining);
     }
     picked.sort((a, b) => b.score - a.score);
@@ -211,7 +212,7 @@ function renderSpots(pois){
     }
     pois.slice(0, 20).forEach(p => {
         const card = document.createElement('div');
-        card.className = 'spot spot-${p.cat}';
+        card.className = `spot spot-${p.cat}`;
         card.innerHTML = `
             <div class="spot-name">${p.name}</div>
             <div class="spot-meta">
@@ -284,7 +285,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     poiMarker.forEach(m => map.removeLayer(m));
     poiMarker = [];
     document.getElementById('spot-list').innerHTML = '';
-    endpointMarkers.forEach(m => map.routeLayer(m));
+    endpointMarkers.forEach(m => map.removeLayer(m));
     endpointMarkers = [];
     const s = selectedPlace.start;
     const e = selectedPlace.end;
