@@ -64,51 +64,63 @@ setupAutocomplete('start');
 setupAutocomplete('end');
 
 async function fetchPOIs(routeCoords) {
-    const chunkSize = Math.max(1, Math.floor)
-    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-    for (const c of routeCoords){
-        if (c[1] < minLat) minLat = c[1];
-        if (c[1] > maxLat) maxLat = c[1];
-        if (c[0] < minLon) minLon = c[0];
-        if (c[0] > maxLon) maxLon = c[0];
+    const chunkSize = Math.max(1, Math.floor(routeCoords.length / 5));
+    const chunks = [];
+    for(let i = 0; i < routeCoords.length; i += chunkSize){
+        chunks.push(routeCoords.slice(i, i + chunkSize));
     }
-    const pad = 0.1;
-    const bbox = `${minLat - pad},${minLon - pad},${maxLat + pad},${maxLon + pad}`;
+    const all = [];
+    const seen = new Set();
 
-    const query = `
-        [out:json][timeout:60];
-        (
-            node["tourism"~"attraction|viewpoint|museum"](${bbox});
-            node["historic"](${bbox});
-            node["natural"~"peak|waterfall"](${bbox});
-        );
-        out body;
-    `;
-    try{
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
-        const res = await fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: `data=${encodeURIComponent(query)}`,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
-            signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        const data = await res.json();
-        const all = data.elements.map(el => ({
-            id: el.id,
-            name: el.tags.name || 'Unnamed spot',
-            lat: el.lat,
-            lon: el.lon,
-            cat: categorize(el.tags),
-            tags: el.tags,
-            interest: interestScore(el.tags),
-        })).filter(p => p.name !== 'Unnamed spot');
-        return filterNearRoute(all, routeCoords, 10);
-    } catch (err){
-        console.error('overpass failed', err);
-        return [];
+    for(const chunk of chunks){
+        let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+        for (const c of chunk){
+            if (c[1] < minLat) minLat = c[1];
+            if (c[1] > maxLat) maxLat = c[1];
+            if (c[0] < minLon) minLon = c[0];
+            if (c[0] > maxLon) maxLon = c[0];
+        }
+        const pad = 0.1;
+        const bbox = `${minLat - pad},${minLon - pad},${maxLat + pad},${maxLon + pad}`;
+
+        const query = `
+            [out:json][timeout:60];
+            (
+                node["tourism"~"attraction|viewpoint|museum"](${bbox});
+                node["historic"](${bbox});
+                node["natural"~"peak|waterfall"](${bbox});
+            );
+            out body;
+        `;
+        try{
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: `data=${encodeURIComponent(query)}`,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            const data = await res.json();
+            data.elements.map(el => {
+                if(!el.tags.name || seen.has(el.id)) return;
+                seen.add(el.id);
+                all.push({
+                    id: el.id,
+                    name: el.tags.name || 'Unnamed spot',
+                    lat: el.lat,
+                    lon: el.lon,
+                    cat: categorize(el.tags),
+                    tags: el.tags,
+                    interest: interestScore(el.tags),
+                });
+            });
+        } catch(err){
+            console.warn('chunk query failed, skipping', err);
+        }
     }
+    return filterNearRoute(all, routeCoords, 10);
 }
 
 function distKm(lat1, lon1, lat2, lon2){
