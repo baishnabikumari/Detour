@@ -101,8 +101,8 @@ async function fetchPOIs(routeCoords) {
         `;
         try{
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 20000);
-            const res = await fetch('https://overpass-api.de/api/interpreter', {
+            const timeout = setTimeout(() => controller.abort(), 30000);
+            const res = await fetch('https://overpass.openstreetmap.fr/api/interpreter', {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
@@ -225,6 +225,12 @@ function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
     }
     picked.sort((a, b) => b.score - a.score);
     return picked;
+}
+
+function esc(str){
+    const d = document.createElement('span');
+    d.textContent = str;
+    return d.innerHTML;
 }
 
 function renderSpots(pois){
