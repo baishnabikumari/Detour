@@ -17,6 +17,10 @@ body {
     background: var(--asphalt);
     color: var(--paper);
     font-family: 'Public Sans', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 header{
@@ -95,8 +99,8 @@ input:focus-visible{
 
 main{
     display: flex;
-    height: 65vh;
-    min-height: 420px;
+    flex: 1;
+    min-height: 0;
     background: var(--ink);
 }
 
@@ -128,8 +132,15 @@ main{
     border-radius: 4px;
     background: var(--paper);
     color: var(--ink);
-    font-family: 'Public Sans', sans-serif;
-    font-size: 0.85rem;
+    font-family:  'Public Sans', sans-serif;
+    font-size: 0.75rem;
+}
+
+#filter select option{
+    background: var(--asphalt);
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
 }
 
 #spot-list{
