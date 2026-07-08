@@ -9,7 +9,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.p
 const selectedPlace = {};
 let routeLayer = null;
 let currentPois = [];
-let poiMarker = [];
+let poiMarkers = [];
 let endpointMarkers = [];
 
 function debounce(fn, delay){
@@ -62,9 +62,13 @@ function setupAutocomplete(inputId){
 
 setupAutocomplete('start');
 setupAutocomplete('end');
+function sleep(ms){
+    return new Promise(r => setTimeout(r, ms));
+}
 
 async function fetchPOIs(routeCoords) {
-    const chunkSize = Math.max(1, Math.floor(routeCoords.length / 5));
+    const numChunks = Math.min(8, Math.max(3, Math.ceil(routeCoords.length / 200)));
+    const chunkSize = Math.max(1, Math.floor(routeCoords.length / numChunks));
     const chunks = [];
     for(let i = 0; i < routeCoords.length; i += chunkSize){
         chunks.push(routeCoords.slice(i, i + chunkSize));
@@ -72,7 +76,9 @@ async function fetchPOIs(routeCoords) {
     const all = [];
     const seen = new Set();
 
-    for(const chunk of chunks){
+    for(let ci = 0; ci < chunks.length; ci++){
+        if(ci > 0) await sleep(1500);
+        const chunk = chunks[ci];
         let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
         for (const c of chunk){
             if (c[1] < minLat) minLat = c[1];
@@ -80,21 +86,22 @@ async function fetchPOIs(routeCoords) {
             if (c[0] < minLon) minLon = c[0];
             if (c[0] > maxLon) maxLon = c[0];
         }
-        const pad = 0.1;
+        const pad = 0.08;
         const bbox = `${minLat - pad},${minLon - pad},${maxLat + pad},${maxLon + pad}`;
 
         const query = `
-            [out:json][timeout:60];
+            [out:json][timeout:25];
             (
                 node["tourism"~"attraction|viewpoint|museum"](${bbox});
                 node["historic"](${bbox});
                 node["natural"~"peak|waterfall"](${bbox});
+                node["amenity"~"restaurant|cafe|bar"]["name"](${bbox});
             );
             out body;
         `;
         try{
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);
+            const timeout = setTimeout(() => controller.abort(), 20000);
             const res = await fetch('https://overpass-api.de/api/interpreter', {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
@@ -102,13 +109,17 @@ async function fetchPOIs(routeCoords) {
                 signal: controller.signal,
             });
             clearTimeout(timeout);
+            if(!res.ok){
+                console.warn(`chunk ${ci + 1} returned ${res.status}, skipping`);
+                continue;
+            }
             const data = await res.json();
-            data.elements.map(el => {
-                if(!el.tags.name || seen.has(el.id)) return;
+            data.elements.forEach(el => {
+                if(!el.tags || !el.tags.name || seen.has(el.id)) return;
                 seen.add(el.id);
                 all.push({
                     id: el.id,
-                    name: el.tags.name || 'Unnamed spot',
+                    name: el.tags.name,
                     lat: el.lat,
                     lon: el.lon,
                     cat: categorize(el.tags),
@@ -117,7 +128,7 @@ async function fetchPOIs(routeCoords) {
                 });
             });
         } catch(err){
-            console.warn('chunk query failed, skipping', err);
+            console.warn(`chunk ${ci + 1} failed, skipping`, err);
         }
     }
     return filterNearRoute(all, routeCoords, 10);
@@ -149,7 +160,7 @@ function detourKm(poi, routeCoords){
         const d = distKm(poi.lat, poi.lon, routeCoords[i][1], routeCoords[i][0]);
         if(d < closest) closest = d;
     }
-    return closest
+    return closest;
 }
 
 function interestScore(tags){
@@ -160,6 +171,7 @@ function interestScore(tags){
     if(tags.tourism === 'attraction' || tags.tourism === 'museum') s += 2;
     if(tags.historic === 'castle' || tags.historic === 'fort' || tags.historic === 'monument') s += 2;
     if(tags.natural === 'waterfall') s += 2;
+    if(tags.amenity === 'restaurant' || tags.amenity === 'cafe') s += 1;
     return s;
 }
 
@@ -226,7 +238,7 @@ function renderSpots(pois){
         const card = document.createElement('div');
         card.className = `spot spot-${p.cat}`;
         card.innerHTML = `
-            <div class="spot-name">${p.name}</div>
+            <div class="spot-name">${esc(p.name)}</div>
             <div class="spot-meta">
                 <span class="spot-cat">${p.cat}</span>
                 <span class="spot-detour">${p.detour.toFixed(1)} km off route</span>
@@ -234,7 +246,7 @@ function renderSpots(pois){
         `;
         list.appendChild(card);
         card.addEventListener('click', () => {
-            const marker = poiMarker.find(m => m._poiId === p.id);
+            const marker = poiMarkers.find(m => m._poiId === p.id);
             if(marker){
                 map.setView([p.lat, p.lon], 13);
                 marker.openPopup();
@@ -251,8 +263,8 @@ const catColors = {
 };
 
 function renderMarkers(pois){
-    poiMarker.forEach(m => map.removeLayer(m));
-    poiMarker = [];
+    poiMarkers.forEach(m => map.removeLayer(m));
+    poiMarkers = [];
     pois.slice(0, 20).forEach(p => {
         const marker = L.circleMarker([p.lat, p.lon], {
             radius: 6,
@@ -262,11 +274,11 @@ function renderMarkers(pois){
             fillOpacity: 0.9,
         }).addTo(map);
         marker.bindPopup(`
-            <strong>${p.name}</strong><br>
+            <strong>${esc(p.name)}</strong><br>
             <span style="text-transform:uppercase;font-size:0.75rem;color:#7a7261">${p.cat} · ${p.detour.toFixed(1)} km off route</span>
         `);
         marker._poiId = p.id;
-        poiMarker.push(marker);
+        poiMarkers.push(marker);
     });
 }
 
@@ -284,7 +296,7 @@ function applyFilters(){
         filtered = [...filtered].sort((a, b) => b.score - a.score);
     }
     renderSpots(filtered);
-    renderMarkers(filtered)
+    renderMarkers(filtered);
 }
 
 document.getElementById('find-btn').addEventListener('click', async () => {
@@ -294,8 +306,8 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     }
     if (routeLayer) map.removeLayer(routeLayer);
 
-    poiMarker.forEach(m => map.removeLayer(m));
-    poiMarker = [];
+    poiMarkers.forEach(m => map.removeLayer(m));
+    poiMarkers = [];
     document.getElementById('spot-list').innerHTML = '';
     endpointMarkers.forEach(m => map.removeLayer(m));
     endpointMarkers = [];
@@ -326,8 +338,8 @@ document.getElementById('find-btn').addEventListener('click', async () => {
         });
         //pois.sort((a,b) => b.score - a.score);
         const spread = spreadAlongRoute(pois, routeCoords, 5, 4);
-        renderSpots(spread)
-        renderMarkers(spread)
+        renderSpots(spread);
+        renderMarkers(spread);
         currentPois = spread;
     } catch (err){
         console.error('routing failed', err);
