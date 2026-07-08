@@ -102,7 +102,7 @@ async function fetchPOIs(routeCoords) {
         try{
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 30000);
-            const res = await fetch('https://overpass.openstreetmap.fr/api/interpreter', {
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
