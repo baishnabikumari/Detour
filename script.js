@@ -81,7 +81,7 @@ async function fetchPOIs(routeCoords) {
     const seen = new Set();
 
     for(let ci = 0; ci < chunks.length; ci++){
-        if(ci > 0) await sleep(1500);
+        if(ci > 0) await sleep(2500);
         const chunk = chunks[ci];
         let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
         for (const c of chunk){
