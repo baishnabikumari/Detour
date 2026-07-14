@@ -8,11 +8,13 @@ module.exports = async function handler(req, res) {
     } else if (req.body && req.body.data){
         query = req.body.data;
     }
-    console.log('proxy receive query len:', query.length, '| first 80 char:', query.slice(0, 80))
     const upstream = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
         body: 'data=' + encodeURIComponent(query),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
+        headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Detour/1.0 (https://detour-puce.vercel.app)',
+        },
     });
     const text = await upstream.text();
     res.setHeader('Content-Type', 'application/json');
