@@ -1,3 +1,7 @@
+const OVERPASS = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    ? 'https://overpass-api.de/api/interpreter'
+    : '/api/overpass';
+
 const map = L.map('map').setView([22.5, 78.9], 5);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
@@ -102,7 +106,7 @@ async function fetchPOIs(routeCoords) {
         try{
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 30000);
-            const res = await fetch('https://overpass-api.de/api/interpreter', {
+            const res = await fetch(OVERPASS, {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
