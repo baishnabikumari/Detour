@@ -16,7 +16,7 @@ let currentPois = [];
 let poiMarkers = [];
 let endpointMarkers = [];
 
-function debounce(fn, delay){
+function debounce(fn, delay) {
     let timer;
     return (...args) => {
         clearTimeout(timer);
@@ -26,16 +26,16 @@ function debounce(fn, delay){
 
 async function searchPlace(query) {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
-    try{
+    try {
         const res = await fetch(url);
         return await res.json();
-    } catch (err){
+    } catch (err) {
         console.error('geocoding failed', err);
         return [];
     }
 }
 
-function setupAutocomplete(inputId){
+function setupAutocomplete(inputId) {
     const input = document.getElementById(inputId);
     const list = document.createElement('ul');
     list.className = 'suggestions';
@@ -44,7 +44,7 @@ function setupAutocomplete(inputId){
     input.addEventListener('input', debounce(async () => {
         const query = input.value.trim();
         list.innerHTML = '';
-        if(query.length < 3) return;
+        if (query.length < 3) return;
 
         const results = await searchPlace(query);
         results.forEach((place) => {
@@ -60,13 +60,13 @@ function setupAutocomplete(inputId){
     }, 400));
 
     document.addEventListener('click', (e) => {
-        if(e.target !== input) list.innerHTML = '';
+        if (e.target !== input) list.innerHTML = '';
     });
 }
 
 setupAutocomplete('start');
 setupAutocomplete('end');
-function sleep(ms){
+function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
 
@@ -74,17 +74,17 @@ async function fetchPOIs(routeCoords) {
     const numChunks = Math.min(8, Math.max(3, Math.ceil(routeCoords.length / 200)));
     const chunkSize = Math.max(1, Math.floor(routeCoords.length / numChunks));
     const chunks = [];
-    for(let i = 0; i < routeCoords.length; i += chunkSize){
+    for (let i = 0; i < routeCoords.length; i += chunkSize) {
         chunks.push(routeCoords.slice(i, i + chunkSize));
     }
     const all = [];
     const seen = new Set();
 
-    for(let ci = 0; ci < chunks.length; ci++){
-        if(ci > 0) await sleep(2500);
+    for (let ci = 0; ci < chunks.length; ci++) {
+        if (ci > 0) await sleep(2500);
         const chunk = chunks[ci];
         let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-        for (const c of chunk){
+        for (const c of chunk) {
             if (c[1] < minLat) minLat = c[1];
             if (c[1] > maxLat) maxLat = c[1];
             if (c[0] < minLon) minLon = c[0];
@@ -103,101 +103,111 @@ async function fetchPOIs(routeCoords) {
             );
             out body;
         `;
-        try{
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 30000);
-            const res = await fetch(OVERPASS, {
-                method: 'POST',
-                body: `data=${encodeURIComponent(query)}`,
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
-                signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            if(!res.ok){
-                console.warn(`chunk ${ci + 1} returned ${res.status}, skipping`);
-                continue;
-            }
-            const data = await res.json();
-            data.elements.forEach(el => {
-                if(!el.tags || !el.tags.name || seen.has(el.id)) return;
-                seen.add(el.id);
-                all.push({
-                    id: el.id,
-                    name: el.tags.name,
-                    lat: el.lat,
-                    lon: el.lon,
-                    cat: categorize(el.tags),
-                    tags: el.tags,
-                    interest: interestScore(el.tags),
+        let data = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) await sleep(2000);
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 30000);
+                const res = await fetch(OVERPASS, {
+                    method: 'POST',
+                    body: `data=${encodeURIComponent(query)}`,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    signal: controller.signal,
                 });
-            });
-        } catch(err){
-            console.warn(`chunk ${ci + 1} failed, skipping`, err);
+                clearTimeout(timeout);
+                if (res.status === 504 || res.status === 429) {
+                    console.warn(`chunk ${ci + 1} got ${res.status}, retrying`);
+                    continue;
+                }
+                if (!res.ok) {
+                    console.warn(`chunk ${ci + 1} returned ${res.status}, skipping`);
+                    break;
+                }
+                data = await res.json();
+                break;
+            } catch (err) {
+                console.warn(`chunk ${ci + 1} attempt ${attempt + 1} failed`, err);
+            }
         }
+        if (!data) continue;
+        data.elements.forEach(el => {
+            if (!el.tags || !el.tags.name || seen.has(el.id)) return;
+            seen.add(el.id);
+            all.push({
+                id: el.id,
+                name: el.tags.name,
+                lat: el.lat,
+                lon: el.lon,
+                cat: categorize(el.tags),
+                tags: el.tags,
+                interest: interestScore(el.tags),
+            });
+        });
     }
-    return filterNearRoute(all, routeCoords, 10);
+        return filterNearRoute(all, routeCoords, 10);
 }
 
-function distKm(lat1, lon1, lat2, lon2){
+function distKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-function filterNearRoute(pois, routeCoords, maxKm){
+function filterNearRoute(pois, routeCoords, maxKm) {
     const step = Math.max(1, Math.floor(routeCoords.length / 50));
     const sampled = [];
     for (let i = 0; i < routeCoords.length; i += step) sampled.push(routeCoords[i]);
     return pois.filter(p => {
-        for(const c of sampled){
-            if(distKm(p.lat, p.lon, c[1], c[0]) <= maxKm) return true;
+        for (const c of sampled) {
+            if (distKm(p.lat, p.lon, c[1], c[0]) <= maxKm) return true;
         }
         return false;
     });
 }
 
-function detourKm(poi, routeCoords){
+function detourKm(poi, routeCoords) {
     const step = Math.max(1, Math.floor(routeCoords.length / 50));
     let closest = Infinity;
-    for(let i = 0; i < routeCoords.length; i += step){
+    for (let i = 0; i < routeCoords.length; i += step) {
         const d = distKm(poi.lat, poi.lon, routeCoords[i][1], routeCoords[i][0]);
-        if(d < closest) closest = d;
+        if (d < closest) closest = d;
     }
     return closest;
 }
 
-function interestScore(tags){
+function interestScore(tags) {
     let s = 1;
-    if(tags.wikipedia || tags.wikidata) s += 3;
-    if(tags.description) s += 1;
-    if(tags.website) s += 1;
-    if(tags.tourism === 'attraction' || tags.tourism === 'museum') s += 2;
-    if(tags.historic === 'castle' || tags.historic === 'fort' || tags.historic === 'monument') s += 2;
-    if(tags.natural === 'waterfall') s += 2;
-    if(tags.amenity === 'restaurant' || tags.amenity === 'cafe') s += 1;
+    if (tags.wikipedia || tags.wikidata) s += 3;
+    if (tags.description) s += 1;
+    if (tags.website) s += 1;
+    if (tags.tourism === 'attraction' || tags.tourism === 'museum') s += 2;
+    if (tags.historic === 'castle' || tags.historic === 'fort' || tags.historic === 'monument') s += 2;
+    if (tags.natural === 'waterfall') s += 2;
+    if (tags.amenity === 'restaurant' || tags.amenity === 'cafe') s += 1;
     return s;
 }
 
-function categorize(tags){
+function categorize(tags) {
     if (tags.amenity === 'restaurant' || tags.amenity === 'cafe' || tags.amenity === 'bar') return 'food';
     if (tags.historic) return 'history';
     if (tags.natural || tags.leisure) return 'nature';
-    if(tags.tourism === 'museum') return 'history';
-    if(tags.tourism === 'viewpoint') return 'nature';
+    if (tags.tourism === 'museum') return 'history';
+    if (tags.tourism === 'viewpoint') return 'nature';
     return 'weird';
 }
 
-function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
+function spreadAlongRoute(pois, routeCoords, buckets, perBucket) {
 
     const total = buckets * perBucket;
     pois.forEach(p => {
         let nearestIdx = 0;
         let nearestDist = Infinity;
         const step = Math.max(1, Math.floor(routeCoords.length / 100));
-        for(let i = 0; i < routeCoords.length; i += step){
+        for (let i = 0; i < routeCoords.length; i += step) {
             const d = distKm(p.lat, p.lon, routeCoords[i][1], routeCoords[i][0]);
-            if(d < nearestDist){
+            if (d < nearestDist) {
                 nearestDist = d;
                 nearestIdx = i;
             }
@@ -207,7 +217,7 @@ function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
 
     const used = new Set();
     const picked = [];
-    for(let b = 0; b < buckets; b++){
+    for (let b = 0; b < buckets; b++) {
         const lo = b / buckets;
         const hi = (b + 1) / buckets;
         const inBucket = pois
@@ -220,7 +230,7 @@ function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
         });
     }
 
-    if(picked.length < total){
+    if (picked.length < total) {
         const remaining = pois
             .filter(p => !used.has(p.id))
             .sort((a, b) => b.score - a.score)
@@ -231,16 +241,16 @@ function spreadAlongRoute(pois, routeCoords, buckets, perBucket){
     return picked;
 }
 
-function esc(str){
+function esc(str) {
     const d = document.createElement('span');
     d.textContent = str;
     return d.innerHTML;
 }
 
-function renderSpots(pois){
+function renderSpots(pois) {
     const list = document.getElementById('spot-list');
     list.innerHTML = '';
-    if(!pois.length){
+    if (!pois.length) {
         list.textContent = 'no worthwhile detour found for this route';
         return;
     }
@@ -257,7 +267,7 @@ function renderSpots(pois){
         list.appendChild(card);
         card.addEventListener('click', () => {
             const marker = poiMarkers.find(m => m._poiId === p.id);
-            if(marker){
+            if (marker) {
                 map.setView([p.lat, p.lon], 13);
                 marker.openPopup();
             }
@@ -272,7 +282,7 @@ const catColors = {
     weird: '#6b4c8f',
 };
 
-function renderMarkers(pois){
+function renderMarkers(pois) {
     poiMarkers.forEach(m => map.removeLayer(m));
     poiMarkers = [];
     pois.slice(0, 20).forEach(p => {
@@ -292,15 +302,15 @@ function renderMarkers(pois){
     });
 }
 
-function applyFilters(){
+function applyFilters() {
     const cat = document.getElementById('category-filter').value;
     const sort = document.getElementById('sort-by').value;
 
     let filtered = currentPois;
-    if(cat !== 'all'){
+    if (cat !== 'all') {
         filtered = filtered.filter(p => p.cat === cat);
     }
-    if(sort === 'time'){
+    if (sort === 'time') {
         filtered = [...filtered].sort((a, b) => a.detour - b.detour);
     } else {
         filtered = [...filtered].sort((a, b) => b.score - a.score);
@@ -310,7 +320,7 @@ function applyFilters(){
 }
 
 document.getElementById('find-btn').addEventListener('click', async () => {
-    if(!selectedPlace.start || !selectedPlace.end){
+    if (!selectedPlace.start || !selectedPlace.end) {
         alert('Pick a start and destination from the dropdown first.');
         return;
     }
@@ -325,15 +335,15 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     const e = selectedPlace.end;
     const url = `https://router.project-osrm.org/route/v1/driving/${s.lon},${s.lat};${e.lon},${e.lat}?overview=full&geometries=geojson`;
 
-    try{
+    try {
         const res = await fetch(url);
         const data = await res.json();
-        if(data.code !== 'Ok'){
+        if (data.code !== 'Ok') {
             alert('No route found b/w those points.');
             return;
         }
         const geojson = { type: 'Feature', geometry: data.routes[0].geometry };
-        routeLayer = L.geoJSON(geojson, { style: {color: '#f4b740', weight: 5 } }).addTo(map);
+        routeLayer = L.geoJSON(geojson, { style: { color: '#f4b740', weight: 5 } }).addTo(map);
         map.fitBounds(routeLayer.getBounds());
         const startPin = L.marker([s.lat, s.lon]).addTo(map).bindPopup('Start');
         const endPin = L.marker([e.lat, e.lon]).addTo(map).bindPopup('Destination');
@@ -351,7 +361,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
         renderSpots(spread);
         renderMarkers(spread);
         currentPois = spread;
-    } catch (err){
+    } catch (err) {
         console.error('routing failed', err);
         alert('Could not find a route b/w those points.');
     }
