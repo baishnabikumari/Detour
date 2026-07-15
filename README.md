@@ -5,6 +5,7 @@
 **[live At Vercel - Click Me](https://detour-puce.vercel.app/)**
 
 ## ScreenShots and ScreenRecording(demo-vid)
+
 <img width="1439" height="832" alt="Screenshot 2026-07-09 at 1 34 58 AM" src="https://github.com/user-attachments/assets/c3a593d2-6885-4ba6-98e2-acc414364889" />
 
 <img width="721" height="416" alt="Screenshot 2026-07-09 at 1 35 56 AM" src="https://github.com/user-attachments/assets/6c4791dc-7f0c-4422-867b-dc67ebff1c22" />
@@ -14,6 +15,20 @@
 <img width="1439" height="834" alt="Screenshot 2026-07-09 at 1 39 42 AM" src="https://github.com/user-attachments/assets/dc19da58-9f29-4426-a989-b934500b6ae1" />
 
 <img width="1439" height="831" alt="Screenshot 2026-07-09 at 1 40 05 AM" src="https://github.com/user-attachments/assets/7bc54763-1ff3-4ef9-a6e9-1269b9359a63" />
+
+## Some SS while i was building the project
+
+<img width="1302" height="659" alt="Screenshot 2026-07-15 at 11 41 23 AM" src="https://github.com/user-attachments/assets/17ed5623-5b5a-41ba-91bf-9bc08f1a1120" />
+
+<img width="1331" height="702" alt="Screenshot 2026-07-15 at 11 41 56 AM" src="https://github.com/user-attachments/assets/07e8bc28-4759-4135-807c-1f4646836a4d" />
+
+<img width="1319" height="655" alt="Screenshot 2026-07-15 at 11 42 17 AM" src="https://github.com/user-attachments/assets/96f45934-2c58-4fad-93af-0baf50ab14d7" />
+
+<img width="1304" height="655" alt="Screenshot 2026-07-15 at 11 42 38 AM" src="https://github.com/user-attachments/assets/f8d1a427-7a7b-40da-8ae3-e5e96c59fd0f" />
+
+<img width="1305" height="694" alt="Screenshot 2026-07-15 at 11 42 57 AM" src="https://github.com/user-attachments/assets/8c6ed322-9ffd-43ea-8f95-3d023cc107fa" />
+
+<img width="1305" height="697" alt="Screenshot 2026-07-15 at 11 43 11 AM" src="https://github.com/user-attachments/assets/6fd06579-4600-4a38-adfc-19655dc0c9b1" />
 
 ## Features
 - Autocomplete search for the start and destination.
